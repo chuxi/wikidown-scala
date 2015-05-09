@@ -163,7 +163,7 @@ if __name__ == "__main__":
     partitions = articles_rdd.mapPartitionsWithIndex(f).collect()
     print partitions
     #
-    # fetched_articles = articles_rdd.mapPartitions(f2).collect()
-    # print fetched_articles
+    fetched_articles = articles_rdd.mapPartitions(f2).collect()
+    print fetched_articles
 
     sc.stop()

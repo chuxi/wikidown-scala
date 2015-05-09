@@ -50,6 +50,7 @@ class WkDown extends Logging with Serializable {
     //      try {
     val u = new URL(url + article_name)
     val uc = u.openConnection()
+    uc.connect()
     val bis = new BufferedInputStream(uc.getInputStream)
     val bos = new BufferedOutputStream(new FileOutputStream(destdir+article_name))
 
