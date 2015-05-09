@@ -22,7 +22,7 @@ def dpconsumer():
         result = put("target/scala-2.10/wikidown.jar", '/tmp/wikidown.jar')
     if result.failed and not confirm("put jar file failed, Continue[Y/N]"):
         abort("Aborting file put jar task!")
-    run('/usr/local/spark/bin/spark-submit --master spark://%s:7077 --total-executor-cores 4 --num-executors 4 --executor-memory 2G /tmp/wikidown.jar' % (env.spark))
+    run('/usr/local/spark/bin/spark-submit --master spark://%s:7077 --total-executor-cores 2 --num-executors 1 --executor-memory 2G /tmp/wikidown.jar' % (env.spark))
 
 @task
 def deploy():
