@@ -31,6 +31,7 @@ class WkDown extends Logging with Serializable {
     var encoding: String = "UTF-8"
     val u = new URL(url)
     val uc = u.openConnection()
+
     val contentType: String = uc.getContentType
     val encodingStart: Int = contentType.indexOf("charset=")
     if (encodingStart != -1) encoding = contentType.substring(encodingStart + 8)
@@ -47,34 +48,38 @@ class WkDown extends Logging with Serializable {
   }
 
   def downloadStream(article_name: String, destdir: String): Boolean = {
-    //      try {
-    val u = new URL(url + article_name)
-    val uc = u.openConnection()
-    uc.connect()
-    val bis = new BufferedInputStream(uc.getInputStream)
-    val bos = new BufferedOutputStream(new FileOutputStream(destdir+article_name))
+    var bis: Option[BufferedInputStream] = None
+    var bos: Option[BufferedOutputStream] = None
+    try {
+      val u = new URL(url + article_name)
+      val uc = u.openConnection()
+      uc.setRequestProperty("Connection", "keep-alive")
+      uc.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/41.0.2272.76 Chrome/41.0.2272.76 Safari/537.36")
 
-    val buffer = new Array[Byte](BUFFER_SIZE)
-    var bytes = bis.read(buffer)
-    while ( bytes != -1) {
-      bos.write(buffer, 0, bytes)
-      bos.flush()
-      bytes = bis.read(buffer)
+      bis = Some(new BufferedInputStream(uc.getInputStream))
+      bos = Some(new BufferedOutputStream(new FileOutputStream(destdir+article_name)))
+
+      val buffer = new Array[Byte](BUFFER_SIZE)
+      var bytes = bis.get.read(buffer)
+      while ( bytes != -1) {
+        bos.get.write(buffer, 0, bytes)
+        bos.get.flush()
+        bytes = bis.get.read(buffer)
+      }
+      bis.get.close()
+      bos.get.close()
+
+      uc.getHeaderField("Content-Type") == "application/octet-stream"
+    } catch {
+      case e: Exception =>
+        logInfo("failed download article " + article_name + " by exception: " + e)
+        false
+    } finally {
+      if (bis == null)
+        bis.get.close()
+      if (bos.isDefined)
+        bos.get.close()
     }
-    bis.close()
-    bos.close()
-
-    uc.getHeaderField("Content-Type") == "application/octet-stream"
-    //      } catch {
-    //        case e: Exception =>
-    //          logInfo("failed download article " + article_name + " by exception: " + e)
-    //          false
-    //      } finally {
-    //        if (bis.isDefined)
-    //          bis.get.close()
-    //        if (bos.isDefined)
-    //          bos.get.close()
-    //      }
 
   }
 
@@ -186,7 +191,12 @@ class WkDown extends Logging with Serializable {
 
     val files = Range(0, num_parts).map(i => tmpdir_data+article_name.substring(0, article_name.length-4)+f"-part-$i%05d").toArray
 
-    files.foreach(fn => hdfs.copyFromLocalFile(false, true, new Path(fn), new Path(hdfswiki+fn.substring(tmpdir_data.length))))
+    if (files.length > 1) {
+      files.foreach(fn => hdfs.copyFromLocalFile(false, true, new Path(fn), new Path(hdfswiki+fn.substring(tmpdir_data.length))))
+    } else {
+      files.foreach(fn => hdfs.copyFromLocalFile(false, true, new Path(fn), new Path(hdfswiki+fn.substring(tmpdir_data.length, fn.length-11))))
+    }
+
 
     logInfo("article " + article_name + " moved to hdfs /wikidown/" + article_name)
 

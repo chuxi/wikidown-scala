@@ -32,10 +32,20 @@ object HDFSHelper {
         new Path(getClass.getResource("/hello3.txt").toString),
         new Path(getClass.getResource("/hello2.txt").toString)), new Path("/texts"))
 
+
+//    hdfs.concat(new Path("/texts/text"), Array(new Path("/texts/hello2.txt"),new Path("/texts/hello3.txt")))
+
     hdfs.delete(new Path("/texts"), true)
 
-    hdfs.delete(new Path("/wikidown/enwiki-latest-pages-articles27.xml-p029625017p045581259"), true)
-    hdfs.delete(new Path("/wikidown/enwiki-latest-pages-articles27.xml-p029625017p046315516"), true)
+    val files = Array("/hello2.txt", "/hello3.txt")
+
+
+
+//    hdfs.rename(new Path("/wikidown/enwiki-latest-pages-articles21.xml-p013325003p015724999-part-00000"),
+//                new Path("/wikidown/enwiki-latest-pages-articles21.xml-p013325003p015724999"))
+
+//    hdfs.delete(new Path("/wikidown/enwiki-latest-pages-articles27.xml-p029625017p045581259"), true)
+//    hdfs.delete(new Path("/wikidown/enwiki-latest-pages-articles27.xml-p029625017p046315516"), true)
 
   }
 
