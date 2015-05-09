@@ -109,7 +109,7 @@ def split_bz2_file(tmpfile):
 def retrive_and_write_to_store_path(article_name):
     import shutil
     start = time.time()
-    tmpfile = "/tmp/" + article_name
+    tmpfile = "/tmp/download_articles/" + article_name
 
     print "start to download %s ..." % article_name
     download_articles(article_name, tmpfile)
@@ -121,10 +121,10 @@ def retrive_and_write_to_store_path(article_name):
 
     # move the file parts into new store place
     # TODO: move files to HDFS
-    if not os.path.exists("/tmp/data"):
-        os.mkdir("/tmp/data")
+    if not os.path.exists("/tmp/download_articles/data"):
+        os.mkdir("/tmp/download_articles/data")
     for part in range(0, num_parts):
-        desfile = "/tmp/data/" + article_name + "-part-%05d" % part
+        desfile = "/tmp/download_articles/data/" + article_name + "-part-%05d" % part
         srcfile = "%s-part-%05d" %(tmpfile, part)
         if os.path.exists(desfile):
             os.remove(desfile)
@@ -149,7 +149,15 @@ def f2(iter):
 
 
 if __name__ == "__main__":
-    articles_to_retrive = get_articles_to_retrive()
+    # articles_to_retrive = get_articles_to_retrive()
+    articles_to_retrive = ["enwiki-latest-pages-articles16.xml-p004825005p006024996.bz2",
+                           "enwiki-latest-pages-articles17.xml-p006025001p007524997.bz2",
+                           "enwiki-latest-pages-articles18.xml-p007525004p009225000.bz2",
+                           "enwiki-latest-pages-articles19.xml-p009225002p011124997.bz2",
+                           "enwiki-latest-pages-articles2.xml-p000010002p000024999.bz2",
+                           "enwiki-latest-pages-articles20.xml-p011125004p013324998.bz2",
+                           "enwiki-latest-pages-articles27.xml-p029625017p045581259.bz2",
+                           "enwiki-latest-pages-articles27.xml-p029625017p046315516.bz2"]
 
     # normal method
     # for article_name in articles_to_retrive:
@@ -158,7 +166,7 @@ if __name__ == "__main__":
     # download files by spark
     sc = SparkContext("spark://node1:7077", "retrive wiki articles")
     # sc = SparkContext("local", "retrive wiki articles")
-    articles_rdd = sc.parallelize(articles_to_retrive.keys(), 4)
+    articles_rdd = sc.parallelize(articles_to_retrive, 4)
     #
     partitions = articles_rdd.mapPartitionsWithIndex(f).collect()
     print partitions

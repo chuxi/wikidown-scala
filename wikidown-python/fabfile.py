@@ -23,7 +23,7 @@ def dpconsumer():
         result = put("wkdown.py", '/tmp/wkdown.py')
     if result.failed and not confirm("put jar file failed, Continue[Y/N]"):
         abort("Aborting file put jar task!")
-    run('/usr/local/spark/bin/spark-submit --master spark://%s:7077 --total-executor-cores 4 --num-executors 4 --executor-memory 2G /tmp/wkdown.py' % (env.spark))
+    run('/usr/local/spark/bin/spark-submit --master spark://%s:7077 --total-executor-cores 4 --num-executors 1 --executor-memory 2G /tmp/wkdown.py' % (env.spark))
 
 @task
 def deploy():
