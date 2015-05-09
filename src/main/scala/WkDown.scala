@@ -53,8 +53,16 @@ class WkDown extends Logging with Serializable {
     try {
       val u = new URL(url + article_name)
       val uc = u.openConnection()
+      uc.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+      uc.setRequestProperty("Accept-Encoding", "gzip, deflate, sdch")
+      uc.setRequestProperty("Accept-Language", "en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4")
       uc.setRequestProperty("Connection", "keep-alive")
+      uc.setRequestProperty("Host", "dumps.wikimedia.org")
+      uc.setRequestProperty("If-Range", "Mon, 06 Apr 2015 15:42:20 GMT")
+      uc.setRequestProperty("Range", "bytes=1152-1152")
       uc.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/41.0.2272.76 Chrome/41.0.2272.76 Safari/537.36")
+
+//      uc.connect()
 
       bis = Some(new BufferedInputStream(uc.getInputStream))
       bos = Some(new BufferedOutputStream(new FileOutputStream(destdir+article_name)))
