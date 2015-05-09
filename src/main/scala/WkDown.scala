@@ -30,7 +30,7 @@ class WkDown extends Logging with Serializable {
 
     var encoding: String = "UTF-8"
     val u = new URL(url)
-    val uc = u.openConnection()
+    val uc = u.openConnection().asInstanceOf[HttpURLConnection]
 
     val contentType: String = uc.getContentType
     val encodingStart: Int = contentType.indexOf("charset=")
@@ -39,32 +39,35 @@ class WkDown extends Logging with Serializable {
     // TODO:: exception handle
     val s = new BufferedSource(uc.getInputStream)(encoding)
     val r = s.getLines()
-    s.close()
 
-    r.collect {
+    val rs = r.collect {
       case ACCEPT_REGX(article, size) => Some(article, size.toLong)
       case _ => None
     }.filter(_ != None).map(_.get).toList
+    s.close()
+    uc.disconnect()
+    rs
   }
 
   def downloadStream(article_name: String, destdir: String): Boolean = {
     var bis: Option[BufferedInputStream] = None
     var bos: Option[BufferedOutputStream] = None
+    var uc: Option[HttpURLConnection] = None
     try {
       val u = new URL(url + article_name)
-      val uc = u.openConnection()
-      uc.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-      uc.setRequestProperty("Accept-Encoding", "gzip, deflate, sdch")
-      uc.setRequestProperty("Accept-Language", "en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4")
-      uc.setRequestProperty("Connection", "keep-alive")
-      uc.setRequestProperty("Host", "dumps.wikimedia.org")
-      uc.setRequestProperty("If-Range", "Mon, 06 Apr 2015 15:42:20 GMT")
-      uc.setRequestProperty("Range", "bytes=1152-1152")
-      uc.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/41.0.2272.76 Chrome/41.0.2272.76 Safari/537.36")
+      uc = Some(u.openConnection().asInstanceOf[HttpURLConnection])
+//      uc.get.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+//      uc.get.setRequestProperty("Accept-Encoding", "gzip, deflate, sdch")
+//      uc.get.setRequestProperty("Accept-Language", "en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4")
+//      uc.get.setRequestProperty("Connection", "keep-alive")
+//      uc.get.setRequestProperty("Host", "dumps.wikimedia.org")
+//      uc.get.setRequestProperty("If-Range", "Mon, 06 Apr 2015 15:42:20 GMT")
+//      uc.get.setRequestProperty("Range", "bytes=1152-1152")
+//      uc.get.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/41.0.2272.76 Chrome/41.0.2272.76 Safari/537.36")
+//
+//      uc.get.connect()
 
-//      uc.connect()
-
-      bis = Some(new BufferedInputStream(uc.getInputStream))
+      bis = Some(new BufferedInputStream(uc.get.getInputStream))
       bos = Some(new BufferedOutputStream(new FileOutputStream(destdir+article_name)))
 
       val buffer = new Array[Byte](BUFFER_SIZE)
@@ -74,10 +77,8 @@ class WkDown extends Logging with Serializable {
         bos.get.flush()
         bytes = bis.get.read(buffer)
       }
-      bis.get.close()
-      bos.get.close()
 
-      uc.getHeaderField("Content-Type") == "application/octet-stream"
+      uc.get.getHeaderField("Content-Type") == "application/octet-stream"
     } catch {
       case e: Exception =>
         logInfo("failed download article " + article_name + " by exception: " + e)
@@ -87,6 +88,8 @@ class WkDown extends Logging with Serializable {
         bis.get.close()
       if (bos.isDefined)
         bos.get.close()
+      if (uc.isDefined)
+        uc.get.disconnect()
     }
 
   }
@@ -158,26 +161,7 @@ class WkDown extends Logging with Serializable {
 
 
 
-  def get_articles_to_retrive() = {
-    val hdfs = {
-      val conf = new Configuration()
-      conf.set("fs.defaultFS", "hdfs://10.214.208.11:9000")
-      FileSystem.get(conf)
-    }
 
-    val all_articles = get_articles_from_html()
-    val wp = new Path(hdfswiki)
-    if (!hdfs.exists(wp))
-      hdfs.mkdirs(wp)
-
-    val it = hdfs.listFiles(wp, false)
-    val ab = new ArrayBuffer[String]()
-    while (it.hasNext) {
-      ab += it.next().getPath.getName
-    }
-
-    all_articles.filter(n => !ab.contains(n._1.substring(0, n._1.length-4)))
-  }
 
   def retrive_and_put_articles_to_hdfs(article_name: String): Long = {
     val hdfs = {
@@ -212,39 +196,14 @@ class WkDown extends Logging with Serializable {
     end-start
   }
 
-  def f(index: Int, iter: Iterator[String]) = {
-    iter.map(index.toString + " " + _)
-  }
-
-  def f2(iter: Iterator[String]) = {
-    iter.map(article => (article, retrive_and_put_articles_to_hdfs(article)))
-  }
-
 }
 
 object WkDown {
-  def main(args: Array[String]) = {
-    val wd = new WkDown
-    //    wd.download_article("enwiki-latest-pages-articles1.xml-p000000010p000010000.bz2", "/tmp/download_articles/")
-
-    //    retrive_and_put_articles_to_hdfs("enwiki-latest-pages-articles1.xml-p000000010p000010000.bz2")
-    val conf = new SparkConf().setAppName("wiki spark downloader").setMaster("spark://node1:7077")
-    val sc = new SparkContext(conf)
-
-    val articles_to_retrive = wd.get_articles_to_retrive()
-
-    articles_to_retrive.foreach(m => println(m._1 + "  size: " + m._2/1024/1024))
-
-    val partitions = sc.parallelize(articles_to_retrive, 4).map(_._1)
-
-    val partitionsWithIndex = partitions.mapPartitionsWithIndex(wd.f).collect()
-
-    partitionsWithIndex.foreach(println)
-
-    val rs = partitions.mapPartitions(wd.f2).collect()
-
-    rs.foreach(println)
-
-    sc.stop()
+  var wd: Option[WkDown] = None
+  def apply(): WkDown = wd.isDefined match {
+    case true => wd.get
+    case false =>
+      wd = Some(new WkDown)
+      wd.get
   }
 }

@@ -15,6 +15,6 @@ assemblyJarName in assembly := "wikidown.jar"
 
 test in assembly := {}
 
-mainClass in assembly := Some("WkDown")
+mainClass in assembly := Some("WikiDown")
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
